@@ -1,101 +1,131 @@
-import Image from "next/image";
+import * as Table from "@/components/ui/table";
+import { randomUUID } from "crypto";
+import cron from "node-cron";
 
-export default function Home() {
+export default async function Home() {
+  const jobs = await db.get();
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="grid items-center justify-center my-[10vh]">
+      <form action={addJob}>
+        <input
+          type="text"
+          name="pattern"
+          placeholder="Enter a cron expression"
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+        <input type="text" name="url" placeholder="Enter a url to fetch" />
+        <input type="submit" value="Add Job" />
+      </form>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <Table.Table>
+        <Table.TableHeader>
+          <Table.TableRow>
+            <Table.TableHead className="min-w-[100px]">
+              CRON expression
+            </Table.TableHead>
+            <Table.TableHead>URL</Table.TableHead>
+            <Table.TableHead>Next run</Table.TableHead>
+            <Table.TableHead className="text-right">Last run</Table.TableHead>
+          </Table.TableRow>
+        </Table.TableHeader>
+        <Table.TableBody>
+          {jobs.map(({ id, pattern, url, lastRun }) => (
+            <Table.TableRow key={id}>
+              <Table.TableCell className="font-medium w-[150px]">
+                {pattern}
+              </Table.TableCell>
+              <Table.TableCell>{url}</Table.TableCell>
+              <Table.TableCell>In....</Table.TableCell>
+              <Table.TableCell className="text-right">
+                {lastRun?.date}
+              </Table.TableCell>
+            </Table.TableRow>
+          ))}
+        </Table.TableBody>
+      </Table.Table>
     </div>
   );
 }
+
+async function addJob(formData: FormData) {
+  "use server";
+  const pattern = formData.get("pattern") as string;
+  const url = formData.get("url") as string;
+
+  const valid = cron.validate(pattern);
+  if (!valid) return;
+
+  const id = randomUUID();
+  await db.upsert({
+    id,
+    pattern,
+    url,
+  });
+
+  cron.schedule(pattern, () => {
+    fetch(url).then((response) => {
+      response.text().then((text) => {
+        db.upsert({
+          id,
+          pattern,
+          url,
+          lastRun: {
+            date: new Date().toISOString(),
+            success: response.ok,
+            response: text,
+          },
+        });
+      });
+    });
+  });
+}
+
+type Job = {
+  id: string;
+  pattern: string;
+  url: string;
+  lastRun?: {
+    date: string;
+    success: boolean;
+    response: string;
+  };
+};
+
+const dbPath = "db.json";
+const db = {
+  get: async (): Promise<Job[]> => {
+    const file = await Bun.file(dbPath);
+    const exists = await file.exists();
+    if (exists) {
+      return Bun.file(dbPath).json();
+    }
+    Bun.write(dbPath, "[]");
+    return [];
+  },
+  set: async (data: string) => {
+    JSON.parse(data);
+    await Bun.write(dbPath, data);
+  },
+  upsert: async (data: Job) => {
+    const oldData = await db.get();
+    const index = oldData.findIndex((job) => job.id === data.id);
+    if (index === -1) {
+      oldData.push(data);
+    } else {
+      oldData[index] = data;
+    }
+    await db.set(JSON.stringify(oldData));
+  },
+  insert: async (data: Job) => {
+    const oldData = await db.get();
+    const inserted = oldData.push(data);
+    await db.set(JSON.stringify(inserted));
+  },
+  delete: async (id: string) => {
+    const oldData = await db.get();
+    const index = oldData.findIndex((job) => job.id === id);
+    if (index === -1) return;
+    oldData.splice(index, 1);
+    await db.set(JSON.stringify(oldData));
+  },
+};
