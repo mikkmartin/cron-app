@@ -7,6 +7,7 @@ WORKDIR /usr/src/app
 # this will cache them and speed up future builds
 FROM base AS install
 RUN mkdir -p /app
+RUN mkdir -p /data
 COPY package.json bun.lockb /app/
 RUN cd /app && bun install --frozen-lockfile
 
