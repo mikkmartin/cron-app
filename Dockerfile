@@ -1,13 +1,11 @@
-# use the official Bun image
-# see all versions at https://hub.docker.com/r/oven/bun/tags
+# Use the official Bun image
+# See all versions at https://hub.docker.com/r/oven/bun/tags
 FROM oven/bun:latest AS base
-WORKDIR /usr/src/app
 
-# install dependencies into temp directory
-# this will cache them and speed up future builds
+# Install dependencies into temp directory
+# This will cache them and speed up future builds
 FROM base AS install
-RUN mkdir -p /app
-RUN mkdir -p /data
+RUN mkdir /app
 COPY package.json bun.lockb /app/
 RUN cd /app && bun install --frozen-lockfile
 
@@ -21,6 +19,7 @@ RUN \
 
 FROM base AS runner
 WORKDIR /app
+RUN mkdir /data
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
