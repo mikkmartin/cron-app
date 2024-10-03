@@ -8,6 +8,7 @@ import parser from "cron-parser";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { db } from "@/lib/db";
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
@@ -120,58 +121,6 @@ async function addJob(formData: FormData) {
     { name: id }
   );
 }
-
-type Job = {
-  id: string;
-  pattern: string;
-  url: string;
-  lastRun?: {
-    date: string;
-    success: boolean;
-    response: string;
-  };
-};
-
-const dbPath = "db.json";
-const db = {
-  get: async (): Promise<Job[]> => {
-    const file = await Bun.file(dbPath);
-    const exists = await file.exists();
-    if (exists) {
-      return Bun.file(dbPath).json();
-    }
-    Bun.write(dbPath, "[]");
-    return [];
-  },
-  set: async (data: string) => {
-    JSON.parse(data);
-    await Bun.write(dbPath, data);
-  },
-  upsert: async (data: Job) => {
-    const oldData = await db.get();
-    const index = oldData.findIndex((job) => job.id === data.id);
-    if (index === -1) {
-      oldData.push(data);
-    } else {
-      oldData[index] = data;
-    }
-    await db.set(JSON.stringify(oldData));
-  },
-  insert: async (data: Job) => {
-    const oldData = await db.get();
-    const inserted = oldData.push(data);
-    await db.set(JSON.stringify(inserted));
-  },
-  delete: async (id: string) => {
-    const oldData = await db.get();
-    const index = oldData.findIndex((job) => job.id === id);
-    if (index === -1) return;
-    oldData.splice(index, 1);
-    const deleted = cron.getTasks().delete(id);
-    console.log("Job deleted: " + deleted);
-    await db.set(JSON.stringify(oldData));
-  },
-};
 
 function getTimeUntilNextInvocation(cronExpression: string) {
   try {
