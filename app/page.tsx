@@ -68,8 +68,8 @@ export default async function Home() {
               </Table.TableCell>
               <Table.TableCell className="text-right">
                 <form action={deleteJob}>
-                  <Button name="id" value={id} variant="secondary">
-                    <Trash />
+                  <Button name="id" value={id} variant="destructive">
+                    <Trash className="w-4" />
                   </Button>
                 </form>
               </Table.TableCell>
