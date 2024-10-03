@@ -1,7 +1,8 @@
 import "server-only";
 import cron from "node-cron";
 
-const dbPath = "db.json";
+const dbPath =
+  process.env.NODE_ENV === "production" ? "../data/db.json" : "db.json";
 export const db = {
   get: async (): Promise<Job[]> => {
     const file = await Bun.file(dbPath);
