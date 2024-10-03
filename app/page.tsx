@@ -2,8 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as Table from "@/components/ui/table";
 import { randomUUID } from "crypto";
-import { Delete, Trash } from "lucide-react";
+import { Trash } from "lucide-react";
 import cron from "node-cron";
+import parser from "cron-parser";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(duration);
+dayjs.extend(relativeTime);
 
 export default async function Home() {
   const jobs = await db.get();
@@ -47,8 +53,16 @@ export default async function Home() {
                 {pattern}
               </Table.TableCell>
               <Table.TableCell>{url}</Table.TableCell>
-              <Table.TableCell>In....</Table.TableCell>
-              <Table.TableCell>{lastRun?.date}</Table.TableCell>
+              <Table.TableCell>
+                {getTimeUntilNextInvocation(pattern)?.humanize(true)}
+              </Table.TableCell>
+              <Table.TableCell>
+                {lastRun?.date
+                  ? dayjs
+                      .duration(dayjs(lastRun.date).diff(dayjs()))
+                      .humanize(true)
+                  : ""}
+              </Table.TableCell>
               <Table.TableCell className="text-right">
                 <form action={deleteJob}>
                   <Button name="id" value={id} variant="secondary">
@@ -158,3 +172,19 @@ const db = {
     await db.set(JSON.stringify(oldData));
   },
 };
+
+function getTimeUntilNextInvocation(cronExpression: string) {
+  try {
+    const interval = parser.parseExpression(cronExpression);
+    const nextInvocation = interval.next().toDate();
+
+    const now = dayjs();
+    const difference = dayjs(nextInvocation).diff(now);
+    const duration = dayjs.duration(difference);
+
+    return duration;
+  } catch (err) {
+    console.error("Error parsing cron expression:", err);
+    return null;
+  }
+}
