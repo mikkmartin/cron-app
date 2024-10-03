@@ -1,5 +1,8 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import * as Table from "@/components/ui/table";
 import { randomUUID } from "crypto";
+import { Delete, Trash } from "lucide-react";
 import cron from "node-cron";
 
 export default async function Home() {
@@ -7,14 +10,23 @@ export default async function Home() {
 
   return (
     <div className="grid items-center justify-center my-[10vh]">
-      <form action={addJob}>
-        <input
+      <form action={addJob} className="flex gap-2">
+        <Input
+          className="flex-1"
           type="text"
           name="pattern"
+          defaultValue="* * * * *"
           placeholder="Enter a cron expression"
         />
-        <input type="text" name="url" placeholder="Enter a url to fetch" />
-        <input type="submit" value="Add Job" />
+        <Input
+          className="flex-[3]"
+          type="text"
+          name="url"
+          placeholder="Enter a url to fetch"
+        />
+        <Button type="submit" value="Add Job">
+          Add job
+        </Button>
       </form>
 
       <Table.Table>
@@ -36,8 +48,13 @@ export default async function Home() {
               </Table.TableCell>
               <Table.TableCell>{url}</Table.TableCell>
               <Table.TableCell>In....</Table.TableCell>
+              <Table.TableCell>{lastRun?.date}</Table.TableCell>
               <Table.TableCell className="text-right">
-                {lastRun?.date}
+                <form action={deleteJob}>
+                  <Button name="id" value={id} variant="secondary">
+                    <Trash />
+                  </Button>
+                </form>
               </Table.TableCell>
             </Table.TableRow>
           ))}
@@ -45,6 +62,12 @@ export default async function Home() {
       </Table.Table>
     </div>
   );
+}
+
+async function deleteJob(formData: FormData) {
+  "use server";
+  const id = formData.get("id") as string;
+  return db.delete(id);
 }
 
 async function addJob(formData: FormData) {
@@ -62,22 +85,26 @@ async function addJob(formData: FormData) {
     url,
   });
 
-  cron.schedule(pattern, () => {
-    fetch(url).then((response) => {
-      response.text().then((text) => {
-        db.upsert({
-          id,
-          pattern,
-          url,
-          lastRun: {
-            date: new Date().toISOString(),
-            success: response.ok,
-            response: text,
-          },
+  cron.schedule(
+    pattern,
+    () => {
+      fetch(url).then((response) => {
+        response.text().then((text) => {
+          db.upsert({
+            id,
+            pattern,
+            url,
+            lastRun: {
+              date: new Date().toISOString(),
+              success: response.ok,
+              response: text,
+            },
+          });
         });
       });
-    });
-  });
+    },
+    { name: id }
+  );
 }
 
 type Job = {
@@ -126,6 +153,8 @@ const db = {
     const index = oldData.findIndex((job) => job.id === id);
     if (index === -1) return;
     oldData.splice(index, 1);
+    const deleted = cron.getTasks().delete(id);
+    console.log("Job deleted: " + deleted);
     await db.set(JSON.stringify(oldData));
   },
 };
