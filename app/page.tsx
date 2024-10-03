@@ -1,18 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as Table from "@/components/ui/table";
-import { randomUUID } from "crypto";
-import { Trash } from "lucide-react";
-import cron from "node-cron";
+import { db } from "@/lib/db";
 import parser from "cron-parser";
+import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { db } from "@/lib/db";
+import { Trash } from "lucide-react";
+import { unstable_noStore as noStore } from "next/cache";
+import cron from "node-cron";
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
 export default async function Home() {
+  noStore();
   const jobs = await db.get();
 
   return (
