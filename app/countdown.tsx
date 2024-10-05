@@ -19,7 +19,7 @@ export function Countdown({ cronExpression }: { cronExpression: string }) {
     return () => clearInterval(interval);
   }, [cronExpression]);
 
-  return <span>{time}</span>;
+  return <span suppressHydrationWarning>{time}</span>;
 }
 
 function formatDuration(duration: Duration) {

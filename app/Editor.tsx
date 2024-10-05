@@ -47,10 +47,12 @@ export function Editor(props: { jobs: Job[] }) {
           const url = formData.get("url") as string;
           const newJob = { id: "temp", pattern, url, active: true };
 
-          setJobs([...jobs, newJob]);
+          setJobs((jobs) => [...jobs, newJob]);
+          //clear input
+
           addJob(newJob).then((res) => {
             if (!res) return;
-            setJobs(
+            setJobs((jobs) =>
               jobs.map((job) =>
                 job.id === "temp" ? { ...job, id: res.id } : job
               )
