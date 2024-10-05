@@ -16,25 +16,28 @@ import {
 import { Switch } from "@/components/ui/switch";
 import * as Table from "@/components/ui/table";
 import { Job } from "@/lib/db";
-import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
-import relativeTime from "dayjs/plugin/relativeTime";
-import {
-  Check,
-  EllipsisVertical,
-  Trash,
-  XCircle,
-  Clock,
-  CirclePause,
-} from "lucide-react";
-import { useState } from "react";
-import { deleteJob, addJob, updateJob } from "./actions";
+import { getTimeUntilNextInvocation, time } from "@/lib/utils";
+import { Check, EllipsisVertical, Trash, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { addJob, deleteJob, getData, updateJob } from "./actions";
 import { Countdown } from "./countdown";
-dayjs.extend(duration);
-dayjs.extend(relativeTime);
 
 export function Editor(props: { jobs: Job[] }) {
   const [jobs, setJobs] = useState(props.jobs);
+
+  useEffect(() => {
+    const nextTrigger = jobs
+      .filter((job) => job.active)
+      .reduce((acc, job) => {
+        const nextInvocation = getTimeUntilNextInvocation(job.pattern);
+        return Math.min(acc, nextInvocation?.asMilliseconds() ?? Infinity);
+      }, Infinity);
+    const id = setTimeout(async () => {
+      const jobs = await getData();
+      setJobs(jobs);
+    }, nextTrigger);
+    return () => clearTimeout(id);
+  }, [jobs]);
 
   return (
     <>
@@ -127,8 +130,8 @@ export function Editor(props: { jobs: Job[] }) {
                         <>
                           <Check className="w-4 text-green-600" />
                           {job.lastRun?.date
-                            ? dayjs
-                                .duration(dayjs(job.lastRun.date).diff(dayjs()))
+                            ? time
+                                .duration(time(job.lastRun.date).diff(time()))
                                 .humanize(true)
                             : ""}
                         </>

@@ -7,7 +7,7 @@ export default async function Home() {
   const jobs = await getData();
 
   return (
-    <div className="grid my-[10vh] md:max-w-[720px] mx-6 md:mx-auto">
+    <div className="grid md:max-w-[720px] mx-6 md:mx-auto py-[12vh]">
       <Editor jobs={jobs} />
     </div>
   );
