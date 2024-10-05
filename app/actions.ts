@@ -1,4 +1,5 @@
 "use server";
+import { scheduleJob } from "@/lib/cronjobs";
 import { db, Job } from "@/lib/db";
 import { randomUUID } from "crypto";
 import cron from "node-cron";
@@ -17,39 +18,14 @@ export async function updateJob(job: Job) {
   return db.upsert(job);
 }
 
-export async function addJob({ pattern, url }: Omit<Job, "id">) {
-  const valid = cron.validate(pattern);
+export async function addJob(job: Omit<Job, "id">) {
+  const valid = cron.validate(job.pattern);
   if (!valid) return;
 
   const id = randomUUID();
-  await db.upsert({
-    id,
-    pattern,
-    url,
-    active: true,
-  });
+  await db.upsert({ id, ...job });
 
-  cron.schedule(
-    pattern,
-    () => {
-      fetch(url).then((response) => {
-        response.text().then((text) => {
-          db.upsert({
-            id,
-            pattern,
-            url,
-            active: true,
-            lastRun: {
-              date: new Date().toISOString(),
-              success: response.ok,
-              response: text,
-            },
-          });
-        });
-      });
-    },
-    { name: id }
-  );
+  scheduleJob({ id, ...job });
 
   return { id };
 }

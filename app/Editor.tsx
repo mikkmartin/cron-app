@@ -19,7 +19,14 @@ import { Job } from "@/lib/db";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { Check, EllipsisVertical, Trash, XCircle } from "lucide-react";
+import {
+  Check,
+  EllipsisVertical,
+  Trash,
+  XCircle,
+  Clock,
+  CirclePause,
+} from "lucide-react";
 import { useState } from "react";
 import { deleteJob, addJob, updateJob } from "./actions";
 import { Countdown } from "./countdown";
@@ -47,7 +54,7 @@ export function Editor(props: { jobs: Job[] }) {
             );
           });
         }}
-        className="flex gap-2 w-full"
+        className="flex gap-2 w-full mb-2"
       >
         <Input
           className="flex-1"
@@ -74,8 +81,8 @@ export function Editor(props: { jobs: Job[] }) {
               CRON expression
             </Table.TableHead>
             <Table.TableHead>URL</Table.TableHead>
-            <Table.TableHead>Last run</Table.TableHead>
             <Table.TableHead>Next run</Table.TableHead>
+            <Table.TableHead>Last run</Table.TableHead>
             <Table.TableHead className="text-right">Status</Table.TableHead>
           </Table.TableRow>
         </Table.TableHeader>
@@ -86,12 +93,14 @@ export function Editor(props: { jobs: Job[] }) {
                 <Switch
                   checked={job.active}
                   onCheckedChange={(active) => {
-                    setJobs(
-                      jobs.map((_job) =>
-                        _job.id === job.id ? { ..._job, active } : _job
-                      )
-                    );
-                    updateJob(job);
+                    setJobs((jobs) => {
+                      const newJob = { ...job, active };
+                      const newJobs = jobs.map((_job) =>
+                        _job.id === job.id ? newJob : _job
+                      );
+                      updateJob(newJob);
+                      return newJobs;
+                    });
                   }}
                 />
               </Table.TableCell>
@@ -101,23 +110,33 @@ export function Editor(props: { jobs: Job[] }) {
               <Table.TableCell className="whitespace-nowrap truncate max-w-32">
                 {job.url}
               </Table.TableCell>
+
               <Table.TableCell>
-                {job.lastRun?.date
-                  ? dayjs
-                      .duration(dayjs(job.lastRun.date).diff(dayjs()))
-                      .humanize(true)
-                  : ""}
+                {job.active ? (
+                  <Countdown cronExpression={job.pattern} />
+                ) : (
+                  <span className="text-slate-400">Inactive</span>
+                )}
               </Table.TableCell>
+
               <Table.TableCell>
-                <Countdown cronExpression={job.pattern} />
-              </Table.TableCell>
-              <Table.TableCell className="pr-0 flex items-center justify-end">
                 <Popover>
-                  <PopoverTrigger>
-                    {job.lastRun?.success ? (
-                      <Check className="w-4 text-green-600" />
+                  <PopoverTrigger className="flex items-center gap-2">
+                    {job.lastRun ? (
+                      job.lastRun.success ? (
+                        <>
+                          <Check className="w-4 text-green-600" />
+                          {job.lastRun?.date
+                            ? dayjs
+                                .duration(dayjs(job.lastRun.date).diff(dayjs()))
+                                .humanize(true)
+                            : ""}
+                        </>
+                      ) : (
+                        <XCircle className="w-4 text-red-600" />
+                      )
                     ) : (
-                      <XCircle className="w-4 text-red-600" />
+                      <span>–</span>
                     )}
                   </PopoverTrigger>
                   <PopoverContent className="max-h-64 p-0 flex flex-col &>*:grow-0">
@@ -132,6 +151,9 @@ export function Editor(props: { jobs: Job[] }) {
                     </div>
                   </PopoverContent>
                 </Popover>
+              </Table.TableCell>
+
+              <Table.TableCell className="flex items-center justify-end overflow-visible pr-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="hover:bg-slate-100">

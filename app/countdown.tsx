@@ -21,11 +21,7 @@ export function Countdown({ cronExpression }: { cronExpression: string }) {
     return () => clearInterval(interval);
   }, [cronExpression]);
 
-  return (
-    <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-      {time}
-    </span>
-  );
+  return <span>{time}</span>;
 }
 
 function getTimeUntilNextInvocation(cronExpression: string) {
@@ -38,7 +34,6 @@ function getTimeUntilNextInvocation(cronExpression: string) {
     const duration = dayjs.duration(difference);
 
     if (duration.asMinutes() < 1) {
-      console.log("Less than a minute");
       return (
         "00:00:" + Math.round(duration.seconds()).toString().padStart(2, "0")
       );
