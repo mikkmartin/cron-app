@@ -16,6 +16,7 @@ export async function register() {
               id,
               pattern,
               url,
+              active: true,
               lastRun: {
                 date: new Date().toISOString(),
                 success: response.ok,

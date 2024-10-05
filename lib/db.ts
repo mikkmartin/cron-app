@@ -3,6 +3,7 @@ import cron from "node-cron";
 
 const dbPath =
   process.env.NODE_ENV === "production" ? "../data/db.json" : "db.json";
+
 export const db = {
   get: async (): Promise<Job[]> => {
     const file = await Bun.file(dbPath);
@@ -37,16 +38,23 @@ export const db = {
     const index = oldData.findIndex((job) => job.id === id);
     if (index === -1) return;
     oldData.splice(index, 1);
-    const deleted = cron.getTasks().delete(id);
-    console.log("Job deleted: " + deleted);
+    const tasks = cron.getTasks();
+    [...tasks].map(([name, task]: [string, cron.ScheduledTask]) => {
+      console.log(name, id);
+      if (name === id) {
+        task.stop();
+        console.log("Job deleted: " + name);
+      }
+    });
     await db.set(oldData);
   },
 };
 
-type Job = {
+export type Job = {
   id: string;
   pattern: string;
   url: string;
+  active: boolean;
   lastRun?: {
     date: string;
     success: boolean;
